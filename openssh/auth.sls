@@ -6,12 +6,27 @@
 {%- endif %}
 {%- endmacro -%}
 
+{%- macro print_authorized_file_location(key) -%}
+{#- Parameter expansion is just %h and %u, %% is not supported -#}
+{%- set auth_key_file = salt['pillar.get']('sshd_config:AuthorizedKeysFile', False) -%}
+{%- if auth_key_file -%}
+  {%- if '%h' in auth_key_file -%}
+     {%- set auth_key_file = auth_key_file.replace('%h', salt['user.info'](key['user']).home) -%}
+  {%- endif -%}
+  {%- if '%u' in auth_key_file -%}
+     {%- set auth_key_file = auth_key_file.replace('%u', key['user']) -%}
+  {%- endif -%}
+    - config: {{ auth_key_file }}
+{%- endif -%}
+{%- endmacro -%}
+
 {%- macro print_ssh_auth(identifier, key) -%}
       {%- if 'user' in key  %}
     - user: {{ key['user'] }}
       {%- else %}
     - user: {{ identifier }}
       {%- endif %}
+    {{ print_authorized_file_location(key) }}
       {%- if 'present' in key and key['present'] and 'source' in key %}
     - source: {{ key['source'] }}
       {%- else %}
